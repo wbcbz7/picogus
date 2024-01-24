@@ -188,6 +188,7 @@ endif()
 
 if(PROJECT_TYPE STREQUAL "JOY")
     pico_set_program_name(picogus "picogus-joy")
+    set(USB_STACK 1)
     set(USB_JOYSTICK 1)
     target_compile_definitions(picogus PRIVATE
         USB_JOYSTICK_ONLY=1
@@ -201,12 +202,42 @@ if(PROJECT_TYPE STREQUAL "JOY")
      pico_enable_stdio_semihosting(picogus 0)
 endif()
 
+if (PROJECT_TYPE STREQUAL "MOUSE")
+    pico_set_program_name(picogus "picogus-mouse")
+    set(USB_STACK 1)
+    set(USB_MOUSE 1)
+    target_compile_definitions(picogus PRIVATE
+        USB_MOUSE_ONLY=1
+    )
+ 
+    target_sources(picogus PRIVATE
+        pico_pic.c
+        mouseplay.cpp
+        mouse/8250uart.cpp
+        mouse/sermouse.cpp
+    )
+     pico_enable_stdio_uart(picogus 1)
+     pico_enable_stdio_usb(picogus 0)
+     pico_enable_stdio_semihosting(picogus 0)
+endif()
+
+if (USB_STACK)
+    # USB stack common stuff
+    target_link_libraries(picogus tinyusb_host)
+endif()
+
+if (USB_MOUSE) 
+    # USB Mouse stuff
+    target_sources(picogus PRIVATE mouse/mouse_hid.c)
+    target_include_directories(picogus PUBLIC ${CMAKE_CURRENT_LIST_DIR}/mouse)
+    target_compile_definitions(picogus PRIVATE USB_MOUSE=1)
+endif()
+
 if(USB_JOYSTICK)
     # Joystick stuff
     target_sources(picogus PRIVATE joy_hid/joy_hid.c)
     target_link_libraries(picogus hardware_pwm)
     target_include_directories(picogus PUBLIC ${CMAKE_CURRENT_LIST_DIR}/joy_hid)
-    target_link_libraries(picogus tinyusb_host)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tusb_xinput)
     target_link_libraries(picogus xinput_host_app_driver)
     target_compile_definitions(picogus PRIVATE USB_JOYSTICK=1)
